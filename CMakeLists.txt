@@ -10,10 +10,17 @@ endif()
 
 option(VDS_BUILD_TESTS "Build the unit tests (no graphics needed)" ON)
 
+# vds_core: vehicle model and logic. It must never link SDL.
+add_library(vds_core STATIC
+  src/core/VehicleState.cpp)
+target_include_directories(vds_core PUBLIC src)
+target_compile_options(vds_core PRIVATE -Wall -Wextra -Wpedantic)
+
 if(VDS_BUILD_TESTS)
   enable_testing()
   add_executable(vds_tests tests/test_main.cpp)
   target_include_directories(vds_tests PRIVATE tests)
+  target_link_libraries(vds_tests PRIVATE vds_core)
   target_compile_options(vds_tests PRIVATE -Wall -Wextra -Wpedantic)
   add_test(NAME vds_tests COMMAND vds_tests)
 endif()
