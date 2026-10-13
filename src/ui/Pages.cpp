@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdio>
 #include <string>
+#include <utility>
 
 #include "ui/WarningPolicy.hpp"
 
@@ -130,12 +131,22 @@ struct Column {
     void gap() { y += 10; }
 };
 
+// A titled box: background + heading. The caller lays the rows out inside it.
+void panel(Gfx& g, int x, int y, int w, int h, const char* title) {
+    g.fillRect(x, y, w, h, kPanel);
+    g.text(x + 14, y + 5, title, 20, kHead);
+}
+
 void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
     static const char* kInv[kInverterCount] = {"FL", "FR", "RL", "RR"};
     g.text(20, 8, fmt("DEBUGGING   t = %.1f s", s.time_s), 28, kText);
 
-    Column v{g, 20, 100};
-    v.head("VEHICLE");
+    constexpr int kTop = 88;   // below the chip row
+    constexpr int kBody = 32;  // from the top of a panel to its first row
+
+    // ---- column 1: vehicle, settings
+    panel(g, 10, kTop, 410, 215, "VEHICLE");
+    Column v{g, 24, kTop + kBody};
     v.kv("speed", fmt("%.1f km/h", s.speed_kmh));
     v.kv("target speed", fmt("%.1f km/h", s.target_speed_kmh));
     v.kv("throttle", fmt("%.0f %%", s.throttle * 100));
@@ -143,30 +154,34 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
     v.kv("steering", fmt("%+.1f deg", s.steering_deg));
     v.kv("distance", fmt("%.0f m", s.distance_m));
     v.kv("lap", fmt("%d", s.lap));
-    v.gap();
-    v.head("SETTINGS");
-    v.kv("power level", fmt("%d", s.power_level));
-    v.kv("regen level", fmt("%d", s.regen_level));
-    v.kv("torque vect.", s.tv_level == 0 ? "OFF" : fmt("%d", s.tv_level));
-    v.kv("DRS", fmt("req %s / %s", s.drs_requested ? "Y" : "N", s.drs_open ? "OPEN" : "SHUT"));
-    v.kv("TS state", toString(s.ts));
-    v.kv("LV voltage", fmt("%.2f V", s.lv_voltage));
 
-    Column a{g, 440, 100};
-    a.head("ACCUMULATOR");
+    panel(g, 10, kTop + 223, 410, 190, "SETTINGS");
+    Column st{g, 24, kTop + 223 + kBody};
+    st.kv("power level", fmt("%d", s.power_level));
+    st.kv("regen level", fmt("%d", s.regen_level));
+    st.kv("torque vect.", s.tv_level == 0 ? "OFF" : fmt("%d", s.tv_level));
+    st.kv("DRS", fmt("req %s / %s", s.drs_requested ? "Y" : "N", s.drs_open ? "OPEN" : "SHUT"));
+    st.kv("TS state", toString(s.ts));
+    st.kv("LV voltage", fmt("%.2f V", s.lv_voltage));
+
+    // ---- column 2: accumulator, ECUs
+    panel(g, 430, kTop, 390, 165, "ACCUMULATOR");
+    Column a{g, 444, kTop + kBody};
     a.kv("SoC", fmt("%.1f %%", s.soc_pct), okOr(w.severityOf(WarnId::LowSoc), kText));
     a.kv("pack voltage", fmt("%.1f V", s.pack_voltage));
     a.kv("pack current", fmt("%.1f A", s.pack_current_a));
     a.kv("pack power", fmt("%.1f kW", s.pack_power_kw));
     a.kv("pack temp", fmt("%.1f C", s.pack_temp_c), okOr(w.severityOf(WarnId::PackTemp), kText));
-    a.gap();
-    a.head("ECU STATUS");
+
+    panel(g, 430, kTop + 173, 390, 165, "ECU STATUS");
+    Column e{g, 444, kTop + 173 + kBody};
     for (int i = 0; i < kEcuCount; ++i)
-        a.kv(toString(static_cast<Ecu>(i)), toString(s.ecu[i]),
+        e.kv(toString(static_cast<Ecu>(i)), toString(s.ecu[i]),
              okOr(w.severityOf(WarnId::EcuStatus, i), kGreen));
 
-    Column d{g, 840, 100};
-    d.head("INVERTERS");
+    // ---- column 3: inverters, autonomous, injected faults
+    panel(g, 830, kTop, 440, 165, "INVERTERS");
+    Column d{g, 844, kTop + kBody};
     const int ox[6] = {0, 40, 110, 180, 260, 330};
     const char* hdr[6] = {"INV", "TMP", "MOT", "TRQ", "RPM", "STATE"};
     for (int c = 0; c < 6; ++c) g.text(d.x + ox[c], d.y, hdr[c], 18, kDim);
@@ -184,23 +199,25 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
                iv.state == InverterState::Fault ? colorFor(Severity::Critical) : kText);
         d.y += kLine;
     }
-    d.gap();
-    d.head("AUTONOMOUS");
-    d.kv("ASMS", s.asms_on ? "ON" : "OFF");
-    d.kv("AS state", toString(s.as));
-    d.kv("EBS", toString(s.ebs), okOr(w.severityOf(WarnId::EbsStatus), kText));
-    d.kv("mission", toString(s.mission));
-    d.kv("tank", fmt("%.2f bar", s.tank_pressure_bar),
-         okOr(w.severityOf(WarnId::LowTankPressure), kText));
-    d.kv("brake line", fmt("%.2f bar", s.brake_line_pressure_bar));
-    d.gap();
-    d.head("INJECTED FAULTS");
+
+    panel(g, 830, kTop + 173, 440, 190, "AUTONOMOUS");
+    Column au{g, 844, kTop + 173 + kBody};
+    au.kv("ASMS", s.asms_on ? "ON" : "OFF");
+    au.kv("AS state", toString(s.as));
+    au.kv("EBS", toString(s.ebs), okOr(w.severityOf(WarnId::EbsStatus), kText));
+    au.kv("mission", toString(s.mission));
+    au.kv("tank", fmt("%.2f bar", s.tank_pressure_bar),
+          okOr(w.severityOf(WarnId::LowTankPressure), kText));
+    au.kv("brake line", fmt("%.2f bar", s.brake_line_pressure_bar));
+
+    panel(g, 830, kTop + 371, 440, 215, "INJECTED FAULTS");
+    Column f{g, 844, kTop + 371 + kBody};
     for (int i = 0; i < kFaultCount; ++i) {
-        const Fault f = faultFromIndex(i);
-        const bool on = hasFault(s, f);
-        g.text(d.x, d.y, toString(f), 20, on ? colorFor(Severity::Critical) : kDim);
-        g.text(d.x + 340, d.y, on ? "ON" : "off", 20, on ? colorFor(Severity::Critical) : kDim);
-        d.y += kLine;
+        const Fault fault = faultFromIndex(i);
+        const bool on = hasFault(s, fault);
+        g.text(f.x, f.y, toString(fault), 20, on ? colorFor(Severity::Critical) : kDim);
+        g.text(f.x + 340, f.y, on ? "ON" : "off", 20, on ? colorFor(Severity::Critical) : kDim);
+        f.y += kLine;
     }
 
     drawAlerts(g, Mode::Debugging, s, w, 0, 48);
@@ -212,17 +229,36 @@ void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w, const Con
     centered(g, kW / 2, 130, fmt("%.0f", s.speed_kmh), 220, kText);
     centered(g, kW / 2, 395, "km/h", 40, kDim);
 
-    // State of charge (left).
+    // State of charge (left): big value, tall bar, threshold marks read from the config.
     const Color soc_c = okOr(w.severityOf(WarnId::LowSoc), kGreen);
     g.text(40, 150, "SoC", 30, kDim);
     g.text(40, 190, fmt("%.0f%%", s.soc_pct), 90, soc_c);
-    bar(g, 40, 300, 300, 36, s.soc_pct / 100.0, soc_c);
+    bar(g, 40, 310, 300, 56, s.soc_pct / 100.0, soc_c);
+    const ThresholdSet& soc_t = cfg.thresholds.soc;
+    const std::array<std::pair<double, Severity>, 3> soc_marks = {{
+        {soc_t.caution, Severity::Caution},
+        {soc_t.warning, Severity::Warning},
+        {soc_t.critical, Severity::Critical},
+    }};
+    for (const auto& m : soc_marks) {
+        const int mx = 40 + static_cast<int>(300 * std::clamp(m.first / 100.0, 0.0, 1.0));
+        g.fillRect(mx - 1, 304, 3, 68, colorFor(m.second));
+    }
 
-    // Key settings (right).
-    g.text(900, 150, fmt("POWER %d", s.power_level), 40, kText);
-    g.text(900, 205, fmt("REGEN %d", s.regen_level), 40, kText);
-    g.text(900, 260, s.tv_level == 0 ? "TV OFF" : fmt("TV %d", s.tv_level), 40, kText);
-    g.text(900, 315, s.drs_open ? "DRS OPEN" : "DRS SHUT", 40, s.drs_open ? kGreen : kDim);
+    // Key settings (right): small label, big value.
+    auto setting = [&g](int y, const char* label, const std::string& value, Color c) {
+        g.text(900, y, label, 24, kDim);
+        g.text(900, y + 26, value, 48, c);
+    };
+    setting(150, "POWER",
+            fmt("%d/%d", s.power_level, static_cast<int>(cfg.sim.power_levels_max)), kText);
+    setting(225, "REGEN",
+            fmt("%d/%d", s.regen_level, static_cast<int>(cfg.sim.regen_levels_max)), kText);
+    setting(300, "TORQUE VECT.",
+            s.tv_level == 0 ? std::string("OFF")
+                            : fmt("%d/%d", s.tv_level, static_cast<int>(cfg.sim.tv_levels_max)),
+            s.tv_level == 0 ? kDim : kText);
+    setting(375, "DRS", s.drs_open ? "OPEN" : "SHUT", s.drs_open ? kGreen : kDim);
 
     // Drive state.
     const bool drive = s.ts == TsState::Drive;
@@ -281,36 +317,68 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
 
     const Color tank_c = okOr(w.severityOf(WarnId::LowTankPressure), kGreen);
     g.text(680, 250, fmt("AIR TANK  %.2f bar", s.tank_pressure_bar), 30, tank_c);
-    bar(g, 680, 290, 560, 30, s.tank_pressure_bar / cfg.display.bar_full_bar, tank_c);
-    g.text(680, 335, fmt("BRAKE LINE  %.2f bar", s.brake_line_pressure_bar), 30, kText);
-    bar(g, 680, 375, 560, 30, s.brake_line_pressure_bar / cfg.display.bar_full_bar, kHead);
+    const int bx = 680, bw = 560;
+    bar(g, bx, 290, bw, 30, s.tank_pressure_bar / cfg.display.bar_full_bar, tank_c);
+    // Threshold marks, read from the same config the warning engine uses.
+    const ThresholdSet& tank_t = cfg.thresholds.tank_pressure;
+    const std::array<std::pair<double, Severity>, 3> tank_marks = {{
+        {tank_t.caution, Severity::Caution},
+        {tank_t.warning, Severity::Warning},
+        {tank_t.critical, Severity::Critical},
+    }};
+    for (const auto& m : tank_marks) {
+        const int mx = bx + static_cast<int>(bw * std::clamp(m.first / cfg.display.bar_full_bar, 0.0, 1.0));
+        g.fillRect(mx - 1, 284, 3, 42, colorFor(m.second));
+        const std::string label = fmt("%g", m.first);
+        g.text(mx - g.textWidth(label, 16) / 2, 328, label, 16, colorFor(m.second));
+    }
+
+    g.text(680, 350, fmt("BRAKE LINE  %.2f bar", s.brake_line_pressure_bar), 30, kText);
+    bar(g, 680, 388, 560, 30, s.brake_line_pressure_bar / cfg.display.bar_full_bar, kHead);
 
     // Readiness checklist.
     bool ecus_ok = true;
     for (int i = 0; i < kEcuCount; ++i) ecus_ok = ecus_ok && s.ecu[i] == EcuStatus::Ok;
     struct Check {
         const char* name;
+        const char* blocker;
         bool ok;
     };
     const std::array<Check, 6> checks = {{
-        {"ASMS on", s.asms_on},
-        {"Mission selected", s.mission != Mission::None},
-        {"TS ready", s.ts == TsState::Ready || s.ts == TsState::Drive},
-        {"EBS armed", s.ebs == EbsState::Armed},
-        {"All ECUs OK", ecus_ok},
-        {"Tank pressure OK", w.severityOf(WarnId::LowTankPressure) < Severity::Warning},
+        {"ASMS on", "ASMS off", s.asms_on},
+        {"Mission selected", "no mission", s.mission != Mission::None},
+        {"TS ready", "TS not ready", s.ts == TsState::Ready || s.ts == TsState::Drive},
+        {"EBS armed", "EBS not armed", s.ebs == EbsState::Armed},
+        {"All ECUs OK", "ECU fault", ecus_ok},
+        {"Tank pressure OK", "low tank pressure",
+         w.severityOf(WarnId::LowTankPressure) < Severity::Warning},
     }};
     bool all_ok = true;
-    int y = 425;
+    int blocked = 0;
+    const Check* first_block = nullptr;
+    int y = 440;
     for (const Check& c : checks) {
         g.text(680, y, c.ok ? "[OK]" : "[--]", 24, c.ok ? kGreen : colorFor(Severity::Warning));
         g.text(770, y, c.name, 24, c.ok ? kText : kDim);
-        all_ok = all_ok && c.ok;
+        if (!c.ok) {
+            all_ok = false;
+            ++blocked;
+            if (!first_block) first_block = &c;
+        }
         y += 28;
     }
 
     g.fillRect(40, 560, 580, 100, all_ok ? Color{20, 90, 45} : Color{70, 40, 15});
-    centered(g, 330, 585, all_ok ? "SYSTEM READY" : "NOT READY", 56, all_ok ? kGreen : colorFor(Severity::Warning));
+    if (all_ok) {
+        centered(g, 330, 572, "SYSTEM READY", 48, kGreen);
+        if (s.as == AsState::Ready && !s.go_pending)
+            centered(g, 330, 628, "press G to start the run", 24, kText);
+    } else {
+        centered(g, 330, 572, "NOT READY", 48, colorFor(Severity::Warning));
+        std::string why = std::string("blocked by: ") + first_block->blocker;
+        if (blocked > 1) why += " +" + std::to_string(blocked - 1) + " more";
+        centered(g, 330, 628, why, 24, kText);
+    }
 
     drawAlerts(g, Mode::Driverless, s, w, 0, 88);
 }
