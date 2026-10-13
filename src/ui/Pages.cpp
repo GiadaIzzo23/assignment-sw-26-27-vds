@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@ constexpr Color kHead{110, 170, 255};
 constexpr Color kGreen{80, 220, 120};
 constexpr Color kPanel{26, 30, 40};
 constexpr Color kBlack{0, 0, 0};
+constexpr Color kBorder{48, 56, 72};
 
 template <typename... Args>
 std::string fmt(const char* f, Args... a) {
@@ -119,22 +121,31 @@ struct Column {
     Gfx& g;
     int x;
     int y;
+    int w = 380;  // row width: values are right-aligned to x + w
     void head(const char* t) {
         g.text(x, y, t, 22, kHead);
         y += kLine + 4;
     }
     void kv(const char* label, const std::string& v, Color c = kText) {
-        g.text(x, y, label, 20, kDim);
-        g.text(x + 150, y, v, 20, c);
+        std::string upper = label;
+        for (char& ch : upper) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+        g.text(x, y, upper, 20, kDim);
+        g.text(x + w - g.textWidth(v, 20), y, v, 20, c);
         y += kLine;
     }
     void gap() { y += 10; }
 };
 
 // A titled box: background + heading. The caller lays the rows out inside it.
-void panel(Gfx& g, int x, int y, int w, int h, const char* title) {
+// Filled box with a thin border: the basic building block of every page.
+void card(Gfx& g, int x, int y, int w, int h) {
     g.fillRect(x, y, w, h, kPanel);
-    g.text(x + 14, y + 5, title, 20, kHead);
+    g.outlineRect(x, y, w, h, kBorder);
+}
+
+void panel(Gfx& g, int x, int y, int w, int h, const char* title) {
+    card(g, x, y, w, h);
+    g.text(x + 14, y + 7, title, 18, kDim);
 }
 
 void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
@@ -166,7 +177,7 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
 
     // ---- column 2: accumulator, ECUs
     panel(g, 430, kTop, 390, 165, "ACCUMULATOR");
-    Column a{g, 444, kTop + kBody};
+    Column a{g, 444, kTop + kBody, 362};
     a.kv("SoC", fmt("%.1f %%", s.soc_pct), okOr(w.severityOf(WarnId::LowSoc), kText));
     a.kv("pack voltage", fmt("%.1f V", s.pack_voltage));
     a.kv("pack current", fmt("%.1f A", s.pack_current_a));
@@ -174,15 +185,25 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
     a.kv("pack temp", fmt("%.1f C", s.pack_temp_c), okOr(w.severityOf(WarnId::PackTemp), kText));
 
     panel(g, 430, kTop + 173, 390, 165, "ECU STATUS");
-    Column e{g, 444, kTop + 173 + kBody};
+    Column e{g, 444, kTop + 173 + kBody, 362};
     for (int i = 0; i < kEcuCount; ++i)
         e.kv(toString(static_cast<Ecu>(i)), toString(s.ecu[i]),
              okOr(w.severityOf(WarnId::EcuStatus, i), kGreen));
 
+    panel(g, 430, kTop + 346, 390, 240, "ACTIVE WARNINGS");
+    Column wl{g, 444, kTop + 346 + kBody};
+    if (w.active().empty()) g.text(wl.x, wl.y, "none", 20, kDim);
+    int shown = 0;
+    for (const Warning& wr : w.active()) {  // sorted: worst first
+        if (shown++ >= 8) break;
+        g.text(wl.x, wl.y, describe(wr), 20, colorFor(wr.severity));
+        wl.y += kLine;
+    }
+
     // ---- column 3: inverters, autonomous, injected faults
     panel(g, 830, kTop, 440, 165, "INVERTERS");
     Column d{g, 844, kTop + kBody};
-    const int ox[6] = {0, 40, 110, 180, 260, 330};
+    const int ox[6] = {0, 56, 126, 196, 276, 346};
     const char* hdr[6] = {"INV", "TMP", "MOT", "TRQ", "RPM", "STATE"};
     for (int c = 0; c < 6; ++c) g.text(d.x + ox[c], d.y, hdr[c], 18, kDim);
     d.y += kLine;
@@ -201,7 +222,7 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
     }
 
     panel(g, 830, kTop + 173, 440, 190, "AUTONOMOUS");
-    Column au{g, 844, kTop + 173 + kBody};
+    Column au{g, 844, kTop + 173 + kBody, 412};
     au.kv("ASMS", s.asms_on ? "ON" : "OFF");
     au.kv("AS state", toString(s.as));
     au.kv("EBS", toString(s.ebs), okOr(w.severityOf(WarnId::EbsStatus), kText));
@@ -231,6 +252,7 @@ void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w, const Con
 
     // State of charge (left): big value, tall bar, threshold marks read from the config.
     const Color soc_c = okOr(w.severityOf(WarnId::LowSoc), kGreen);
+    card(g, 24, 136, 330, 246);
     g.text(40, 150, "SoC", 30, kDim);
     g.text(40, 190, fmt("%.0f%%", s.soc_pct), 90, soc_c);
     bar(g, 40, 310, 300, 56, s.soc_pct / 100.0, soc_c);
@@ -245,24 +267,27 @@ void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w, const Con
         g.fillRect(mx - 1, 304, 3, 68, colorFor(m.second));
     }
 
-    // Key settings (right): small label, big value.
-    auto setting = [&g](int y, const char* label, const std::string& value, Color c) {
-        g.text(900, y, label, 24, kDim);
-        g.text(900, y + 26, value, 48, c);
+    // Key settings (right): one tile each, small label top-left, big value right.
+    auto setting = [&g](int i, const char* label, const std::string& value, Color c) {
+        const int y0 = 140 + 90 * i;
+        card(g, 890, y0, 350, 78);
+        g.text(906, y0 + 8, label, 20, kDim);
+        g.text(1224 - g.textWidth(value, 38), y0 + 28, value, 38, c);
     };
-    setting(150, "POWER",
+    setting(0, "POWER",
             fmt("%d/%d", s.power_level, static_cast<int>(cfg.sim.power_levels_max)), kText);
-    setting(225, "REGEN",
+    setting(1, "REGEN",
             fmt("%d/%d", s.regen_level, static_cast<int>(cfg.sim.regen_levels_max)), kText);
-    setting(300, "TORQUE VECT.",
+    setting(2, "TORQUE VECT.",
             s.tv_level == 0 ? std::string("OFF")
                             : fmt("%d/%d", s.tv_level, static_cast<int>(cfg.sim.tv_levels_max)),
             s.tv_level == 0 ? kDim : kText);
-    setting(375, "DRS", s.drs_open ? "OPEN" : "SHUT", s.drs_open ? kGreen : kDim);
+    setting(3, "DRS", s.drs_open ? "OPEN" : "SHUT", s.drs_open ? kGreen : kDim);
 
     // Drive state.
     const bool drive = s.ts == TsState::Drive;
-    centered(g, kW / 2, 450, drive ? "DRIVE" : toString(s.ts), 48, drive ? kGreen : kDim);
+    centered(g, kW / 2, 450, drive ? std::string("DRIVE") : std::string("TS ") + toString(s.ts), 48,
+             drive ? kGreen : kDim);
 
     // Pedals + steering.
     g.text(40, 545, "THR", 26, kDim);
@@ -293,13 +318,15 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
     const bool blink = flashOn(s.time_s);
 
     // Left: AS state, mission, ASMS, GO.
-    g.fillRect(40, 130, 580, 190, kPanel);
+    card(g, 40, 130, 580, 190);
+    for (int i = 0; i < 3; ++i)  // frame in the colour of the AS state
+        g.outlineRect(40 + i, 130 + i, 580 - 2 * i, 190 - 2 * i, asColor(s.as, blink));
     g.text(60, 140, "AUTONOMOUS SYSTEM", 26, kDim);
     g.text(60, 180, toString(s.as), 80, asColor(s.as, blink));
     g.text(60, 280, s.asms_on ? "ASMS ON" : "ASMS OFF", 30, s.asms_on ? kGreen : kDim);
     if (s.go_pending) g.text(300, 280, fmt("GO IN %.1f s", s.go_countdown_s), 30, colorFor(Severity::Caution));
 
-    g.fillRect(40, 340, 580, 130, kPanel);
+    card(g, 40, 340, 580, 130);
     g.text(60, 350, "MISSION", 26, kDim);
     g.text(60, 385, toString(s.mission), 60, s.mission == Mission::None ? kDim : kText);
 
@@ -311,7 +338,7 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
     if (s.ebs == EbsState::Armed) ebs_c = kGreen;
     else if (s.ebs == EbsState::Activated || s.ebs == EbsState::Fault) ebs_c = colorFor(Severity::Critical);
     else if (ebs_sev != Severity::None) ebs_c = colorFor(ebs_sev);
-    g.fillRect(680, 130, 560, 100, kPanel);
+    card(g, 680, 130, 560, 100);
     g.text(700, 138, "EBS", 26, kDim);
     g.text(700, 172, toString(s.ebs), 52, ebs_c);
 
@@ -358,14 +385,15 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
     const Check* first_block = nullptr;
     int y = 440;
     for (const Check& c : checks) {
-        g.text(680, y, c.ok ? "[OK]" : "[--]", 24, c.ok ? kGreen : colorFor(Severity::Warning));
-        g.text(770, y, c.name, 24, c.ok ? kText : kDim);
+        g.fillRect(680, y - 2, 64, 30, c.ok ? kGreen : colorFor(Severity::Warning));
+        centered(g, 712, y, c.ok ? "OK" : "--", 24, kBlack);
+        g.text(762, y, c.name, 24, c.ok ? kText : kDim);
         if (!c.ok) {
             all_ok = false;
             ++blocked;
             if (!first_block) first_block = &c;
         }
-        y += 28;
+        y += 32;
     }
 
     g.fillRect(40, 560, 580, 100, all_ok ? Color{20, 90, 45} : Color{70, 40, 15});
