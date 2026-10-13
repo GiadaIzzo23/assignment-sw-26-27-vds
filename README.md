@@ -71,6 +71,8 @@ Detection is the same everywhere (`core/Warnings`); presentation is decided by
 | `F9` | reset the simulation |
 | `Esc` | quit |
 
+> The tab bar and the key hints at the bottom of every page belong to the *simulator*, not to the dashboard design: they help whoever is testing the app. On the car the Manual page would not show them, since a driver does not need key hints.
+
 Quick start: press `T`, wait for READY, hold `S` and press `Enter`, release `S`, hold `W`.
 
 ## Architecture
