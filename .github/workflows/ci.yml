@@ -4,9 +4,13 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -21,3 +25,8 @@ jobs:
 
       - name: Unit tests
         run: ctest --test-dir build --output-on-failure
+
+      # timeout exits with 124 when it has to stop a program that is still
+      # running, which here means "the app started and kept running".
+      - name: App starts (headless smoke test)
+        run: SDL_VIDEODRIVER=dummy timeout 5 ./build/vds || [ $? -eq 124 ]
