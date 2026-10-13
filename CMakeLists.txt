@@ -18,7 +18,10 @@ target_compile_options(vds_core PRIVATE -Wall -Wextra -Wpedantic)
 
 if(VDS_BUILD_TESTS)
   enable_testing()
-  add_executable(vds_tests tests/test_main.cpp)
+  add_executable(vds_tests
+    tests/test_main.cpp
+    tests/test_state.cpp
+    tests/test_interface.cpp)
   target_include_directories(vds_tests PRIVATE tests)
   target_link_libraries(vds_tests PRIVATE vds_core)
   target_compile_options(vds_tests PRIVATE -Wall -Wextra -Wpedantic)
