@@ -26,7 +26,8 @@ if(VDS_BUILD_TESTS)
     tests/test_state.cpp
     tests/test_interface.cpp
     tests/test_config.cpp
-    tests/test_warnings.cpp)
+    tests/test_warnings.cpp
+    tests/test_policy.cpp)
   target_include_directories(vds_tests PRIVATE tests)
   target_link_libraries(vds_tests PRIVATE vds_core)
   target_compile_options(vds_tests PRIVATE -Wall -Wextra -Wpedantic)
@@ -43,7 +44,8 @@ if(VDS_BUILD_APP)
   add_executable(vds
     src/app/main.cpp
     src/ui/Gfx.cpp
-    src/ui/Input.cpp)
+    src/ui/Input.cpp
+    src/ui/Pages.cpp)
   target_link_libraries(vds PRIVATE vds_core PkgConfig::SDL2)
   target_compile_options(vds PRIVATE -Wall -Wextra -Wpedantic)
 

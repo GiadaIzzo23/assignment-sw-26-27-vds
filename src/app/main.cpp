@@ -11,27 +11,15 @@
 #include "core/Simulation.hpp"
 #include "ui/Gfx.hpp"
 #include "ui/Input.hpp"
+#include "core/Warnings.hpp"
 #include "ui/Mode.hpp"
+#include "ui/Pages.hpp"
 
 namespace {
 
 constexpr int kCanvasW = 1280;
 constexpr int kCanvasH = 720;
 constexpr double kMaxFrameS = 0.1;  // never simulate more than this per frame
-
-// Temporary page, replaced by the real three modes in the next commits.
-void drawPlaceholder(vds::Gfx& g, vds::Mode mode, const vds::VehicleState& s) {
-    char line[128];
-    g.text(40, 30, vds::toString(mode), 36, {230, 230, 230});
-    std::snprintf(line, sizeof line, "%.0f km/h", s.speed_kmh);
-    g.text(40, 120, line, 96, {255, 255, 255});
-    std::snprintf(line, sizeof line, "TS %s   AS %s   EBS %s", vds::toString(s.ts),
-                  vds::toString(s.as), vds::toString(s.ebs));
-    g.text(40, 280, line, 28, {180, 200, 255});
-    std::snprintf(line, sizeof line, "SoC %.1f %%   throttle %.0f %%   brake %.0f %%", s.soc_pct,
-                  s.throttle * 100, s.brake * 100);
-    g.text(40, 330, line, 28, {180, 200, 255});
-}
 
 }  // namespace
 
@@ -66,6 +54,7 @@ int main(int argc, char** argv) {
             // simulation for a real data stream does not touch anything below.
             vds::IVehicleSource& source = simulation;
 
+            vds::WarningEngine warnings(cfg);
             vds::Mode mode = vds::Mode::Manual;
             bool running = true;
             Uint64 previous = SDL_GetPerformanceCounter();
@@ -90,8 +79,9 @@ int main(int argc, char** argv) {
                 previous = now;
                 source.update(std::min(dt, kMaxFrameS));
 
+                warnings.evaluate(source.state());
                 gfx.beginFrame({12, 14, 20});
-                drawPlaceholder(gfx, mode, source.state());
+                vds::drawPage(gfx, mode, source.state(), warnings);
                 gfx.endFrame();
             }
         }
