@@ -33,3 +33,22 @@ if(VDS_BUILD_TESTS)
   target_compile_definitions(vds_tests PRIVATE VDS_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
   add_test(NAME vds_tests COMMAND vds_tests)
 endif()
+
+option(VDS_BUILD_APP "Build the SDL2 dashboard application" ON)
+
+if(VDS_BUILD_APP)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2 SDL2_ttf)
+
+  add_executable(vds
+    src/app/main.cpp
+    src/ui/Gfx.cpp
+    src/ui/Input.cpp)
+  target_link_libraries(vds PRIVATE vds_core PkgConfig::SDL2)
+  target_compile_options(vds PRIVATE -Wall -Wextra -Wpedantic)
+
+  # The executable looks for assets/ and config/ next to itself.
+  add_custom_command(TARGET vds POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:vds>/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/config $<TARGET_FILE_DIR:vds>/config)
+endif()
