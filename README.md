@@ -11,7 +11,7 @@ Tested on Ubuntu 24.04 (also under WSL2 with WSLg).
 
 ```bash
 sudo apt install build-essential cmake pkg-config libsdl2-dev libsdl2-ttf-dev
-git clone <your-fork-url> && cd assignment-sw-26-27-vds
+git clone https://github.com/il-tuo-utente/assignment-sw-26-27-vds.git && cd assignment-sw-26-27-vds
 cmake -S . -B build
 cmake --build build -j
 ./build/vds                 # optional: ./build/vds path/to/other.cfg
