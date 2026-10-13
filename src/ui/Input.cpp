@@ -15,9 +15,9 @@ KeyAction actionFor(SDL_Scancode key) {
     switch (key) {
         case SDL_SCANCODE_ESCAPE: a.quit = true; break;
 
-        case SDL_SCANCODE_1: a.mode = Mode::Debugging; break;
-        case SDL_SCANCODE_2: a.mode = Mode::Manual; break;
-        case SDL_SCANCODE_3: a.mode = Mode::Driverless; break;
+        case SDL_SCANCODE_1: case SDL_SCANCODE_KP_1: case SDL_SCANCODE_I: a.mode = Mode::Debugging; break;
+        case SDL_SCANCODE_2: case SDL_SCANCODE_KP_2: case SDL_SCANCODE_O: a.mode = Mode::Manual; break;
+        case SDL_SCANCODE_3: case SDL_SCANCODE_KP_3: case SDL_SCANCODE_P: a.mode = Mode::Driverless; break;
 
         case SDL_SCANCODE_T: cmd(CommandType::TsToggle); break;
         case SDL_SCANCODE_RETURN: cmd(CommandType::ReadyToDrive); break;

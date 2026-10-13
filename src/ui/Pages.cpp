@@ -179,7 +179,7 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
         const Fault f = faultFromIndex(i);
         const bool on = hasFault(s, f);
         g.text(d.x, d.y, toString(f), 20, on ? colorFor(Severity::Critical) : kDim);
-        g.text(d.x + 300, d.y, on ? "ON" : "off", 20, on ? colorFor(Severity::Critical) : kDim);
+        g.text(d.x + 340, d.y, on ? "ON" : "off", 20, on ? colorFor(Severity::Critical) : kDim);
         d.y += kLine;
     }
 
