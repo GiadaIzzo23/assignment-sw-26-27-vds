@@ -1,3 +1,4 @@
+#include "core/Config.hpp"
 #include "ui/Pages.hpp"
 
 #include <algorithm>
@@ -13,8 +14,6 @@ namespace {
 constexpr int kW = 1280;
 constexpr int kH = 720;
 constexpr int kLine = 25;
-constexpr double kSteerFullDeg = 90;  // display scale of the steering bar only
-constexpr double kBarFullBar = 10;    // display scale of the pressure bars only
 
 constexpr Color kText{235, 235, 235};
 constexpr Color kDim{130, 138, 155};
@@ -187,7 +186,7 @@ void drawDebugging(Gfx& g, const VehicleState& s, const WarningEngine& w) {
 }
 
 // -------------------------------------------------------------------- MANUAL
-void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w) {
+void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w, const Config& cfg) {
     // Speed: the one thing that matters.
     centered(g, kW / 2, 130, fmt("%.0f", s.speed_kmh), 220, kText);
     centered(g, kW / 2, 395, "km/h", 40, kDim);
@@ -216,7 +215,7 @@ void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w) {
     g.text(700, 545, "STEER", 26, kDim);
     const int tx = 700, tw = 480, ty = 600;
     g.fillRect(tx, ty, tw, 8, {35, 38, 48});
-    const double f = std::clamp(s.steering_deg / kSteerFullDeg, -1.0, 1.0);
+    const double f = std::clamp(s.steering_deg / cfg.display.steer_full_deg, -1.0, 1.0);
     g.fillRect(tx + tw / 2 + static_cast<int>(f * tw / 2) - 6, ty - 10, 12, 28, kText);
 
     g.text(1040, 690, "MANUAL DRIVING", 20, kDim);
@@ -234,7 +233,7 @@ Color asColor(AsState a, bool blink) {
     }
 }
 
-void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w) {
+void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const Config& cfg) {
     const bool blink = flashOn(s.time_s);
 
     // Left: AS state, mission, ASMS, GO.
@@ -262,9 +261,9 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w) {
 
     const Color tank_c = okOr(w.severityOf(WarnId::LowTankPressure), kGreen);
     g.text(680, 250, fmt("AIR TANK  %.2f bar", s.tank_pressure_bar), 30, tank_c);
-    bar(g, 680, 290, 560, 30, s.tank_pressure_bar / kBarFullBar, tank_c);
+    bar(g, 680, 290, 560, 30, s.tank_pressure_bar / cfg.display.bar_full_bar, tank_c);
     g.text(680, 335, fmt("BRAKE LINE  %.2f bar", s.brake_line_pressure_bar), 30, kText);
-    bar(g, 680, 375, 560, 30, s.brake_line_pressure_bar / kBarFullBar, kHead);
+    bar(g, 680, 375, 560, 30, s.brake_line_pressure_bar / cfg.display.bar_full_bar, kHead);
 
     // Readiness checklist.
     bool ecus_ok = true;
@@ -299,11 +298,11 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w) {
 
 }  // namespace
 
-void drawPage(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& w) {
+void drawPage(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& w, const Config& cfg) {
     switch (mode) {
         case Mode::Debugging: drawDebugging(g, s, w); break;
-        case Mode::Manual: drawManual(g, s, w); break;
-        case Mode::Driverless: drawDriverless(g, s, w); break;
+        case Mode::Manual: drawManual(g, s, w, cfg); break;
+        case Mode::Driverless: drawDriverless(g, s, w, cfg); break;
     }
 }
 

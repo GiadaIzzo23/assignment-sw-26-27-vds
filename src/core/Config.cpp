@@ -25,6 +25,8 @@ std::vector<std::pair<std::string, double*>> Config::fields() {
     add_set("thresholds.pack_temp", thresholds.pack_temp);
     add_set("thresholds.soc", thresholds.soc);
     add_set("thresholds.tank_pressure", thresholds.tank_pressure);
+    add("display.steer_full_deg", display.steer_full_deg);
+    add("display.bar_full_bar", display.bar_full_bar);
     return table;
 }
 

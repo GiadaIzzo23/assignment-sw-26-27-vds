@@ -106,6 +106,14 @@ struct Config {
         double auto_steer_rad_per_s = 0.5;
     } sim;
 
+    // ------------------------------------------------------ display scales
+    // Full-scale values of the bar gauges. Presentation only, but kept here so
+    // the renderer contains no numbers of its own.
+    struct Display {
+        double steer_full_deg = 90;  // steering bar is full at +/- this angle
+        double bar_full_bar = 10;    // pressure bars are full at this pressure
+    } display;
+
     // ---------------------------------------------------------------- loading
     // Every numeric field, addressable by a "section.name" key, for example
     // "thresholds.soc.critical". The pointers refer to this Config object.

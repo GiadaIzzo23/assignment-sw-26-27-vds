@@ -8,6 +8,7 @@
 
 namespace vds {
 
-void drawPage(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& warnings);
+struct Config;
+void drawPage(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& warnings, const Config& cfg);
 
 }  // namespace vds

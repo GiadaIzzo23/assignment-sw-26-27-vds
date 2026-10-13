@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
                 warnings.evaluate(source.state());
                 gfx.beginFrame({12, 14, 20});
-                vds::drawPage(gfx, mode, source.state(), warnings);
+                vds::drawPage(gfx, mode, source.state(), warnings, cfg);
                 gfx.endFrame();
             }
         }

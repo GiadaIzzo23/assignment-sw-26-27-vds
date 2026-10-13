@@ -54,7 +54,7 @@ Detection is the same everywhere (`core/Warnings`); presentation is decided by
 | `W` / Up | accelerate (hold) |
 | `S` / Down | brake (hold) |
 | `A` `D` / Left Right | steer (hold) |
-| `1` `2` `3` | Debugging / Manual / Driverless |
+| `1` `2` `3` (or `I` `O` `P`, or numeric keypad) | Debugging / Manual / Driverless |
 | `T` | tractive system on/off (precharge ~2 s) |
 | `Enter` | ready to drive (hold brake) |
 | `Z` / `X` | power level down / up |
