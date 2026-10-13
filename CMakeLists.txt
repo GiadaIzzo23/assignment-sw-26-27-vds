@@ -14,7 +14,8 @@ option(VDS_BUILD_TESTS "Build the unit tests (no graphics needed)" ON)
 add_library(vds_core STATIC
   src/core/Config.cpp
   src/core/VehicleState.cpp
-  src/core/Warnings.cpp)
+  src/core/Warnings.cpp
+  src/core/Simulation.cpp)
 target_include_directories(vds_core PUBLIC src)
 target_compile_options(vds_core PRIVATE -Wall -Wextra -Wpedantic)
 
