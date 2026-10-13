@@ -38,6 +38,16 @@ The build copies `assets/` and `config/` next to the executable.
 | `2` | Manual Driving | driver on track | speed, SoC, power/regen/TV/DRS, drive state, pedals, steering. Nothing else unless something goes wrong |
 | `3` | Driverless | preparing/after an autonomous run | AS state, mission, ASMS, EBS, air tank and brake line pressure, readiness checklist |
 
+## Screenshots
+
+| Debugging | Manual Driving |
+| --- | --- |
+| ![Debugging page with three active warnings](docs/screenshots/debug-faults.png) | ![Manual page with a critical alert](docs/screenshots/manual-critical.png) |
+
+| Driverless (idle) | Driverless (EBS fault) |
+| --- | --- |
+| ![Driverless page, not ready](docs/screenshots/driverless-idle.png) | ![Driverless page with an EBS fault](docs/screenshots/driverless-ebs-fault.png) |
+
 ### How warnings are presented per mode
 
 Detection is the same everywhere (`core/Warnings`); presentation is decided by
