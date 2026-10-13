@@ -92,6 +92,27 @@ void drawAlerts(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& w
     }
 }
 
+// Simulator chrome (not part of the car's dashboard): mode tabs + key hints.
+void drawFooter(Gfx& g, Mode mode) {
+    const char* names[3] = {"1 DEBUG", "2 MANUAL", "3 DRIVERLESS"};
+    const Mode modes[3] = {Mode::Debugging, Mode::Manual, Mode::Driverless};
+    int x = 20;
+    for (int i = 0; i < 3; ++i) {
+        const bool active = modes[i] == mode;
+        const int w = g.textWidth(names[i], 18) + 24;
+        g.fillRect(x, 686, w, 28, active ? kHead : kPanel);
+        g.text(x + 12, 689, names[i], 18, active ? kBlack : kDim);
+        x += w + 8;
+    }
+    const char* hint = "";
+    switch (mode) {
+        case Mode::Debugging: hint = "F1-F7 inject fault   F8 clear   F9 reset"; break;
+        case Mode::Manual: hint = "W/S pedals  A/D steer  T tractive  Enter drive  Z/X power  C/V regen"; break;
+        case Mode::Driverless: hint = "M ASMS  Q/E mission  G go  Backspace e-stop  F1-F7 faults"; break;
+    }
+    g.text(kW - 20 - g.textWidth(hint, 18), 689, hint, 18, kDim);
+}
+
 // ----------------------------------------------------------------- DEBUGGING
 struct Column {
     Gfx& g;
@@ -218,7 +239,6 @@ void drawManual(Gfx& g, const VehicleState& s, const WarningEngine& w, const Con
     const double f = std::clamp(s.steering_deg / cfg.display.steer_full_deg, -1.0, 1.0);
     g.fillRect(tx + tw / 2 + static_cast<int>(f * tw / 2) - 6, ty - 10, 12, 28, kText);
 
-    g.text(1040, 690, "MANUAL DRIVING", 20, kDim);
     drawAlerts(g, Mode::Manual, s, w, 0, 88);
 }
 
@@ -292,7 +312,6 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
     g.fillRect(40, 560, 580, 100, all_ok ? Color{20, 90, 45} : Color{70, 40, 15});
     centered(g, 330, 585, all_ok ? "SYSTEM READY" : "NOT READY", 56, all_ok ? kGreen : colorFor(Severity::Warning));
 
-    g.text(1040, 690, "DRIVERLESS", 20, kDim);
     drawAlerts(g, Mode::Driverless, s, w, 0, 88);
 }
 
@@ -304,6 +323,7 @@ void drawPage(Gfx& g, Mode mode, const VehicleState& s, const WarningEngine& w, 
         case Mode::Manual: drawManual(g, s, w, cfg); break;
         case Mode::Driverless: drawDriverless(g, s, w, cfg); break;
     }
+    drawFooter(g, mode);
 }
 
 }  // namespace vds
