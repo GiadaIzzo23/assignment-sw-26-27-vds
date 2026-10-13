@@ -1,5 +1,7 @@
 # Vehicle Dashboard Simulator (VDS)
 
+![CI](https://github.com/GiadaIzzo23/assignment-sw-26-27-vds/actions/workflows/ci.yml/badge.svg)
+
 Desktop simulator of the Formula Student dashboard (Race UP, Task 3), written in
 C++17 with SDL2. It has three dashboards with different information hierarchy,
 an interactive internal vehicle simulation, and warnings whose presentation
@@ -32,7 +34,7 @@ The build copies `assets/` and `config/` next to the executable.
 
 | Key | Mode | Audience | Content |
 |-----|------|----------|---------|
-| `1` | Debugging | workshop engineers, car stationary | maximum density: vehicle, settings, accumulator, all ECUs, per-inverter data, autonomous system, injected faults |
+| `1` | Debugging | workshop engineers, car stationary | maximum density: vehicle, settings, accumulator, all ECUs, per-inverter data, autonomous system, injected faults, list of active warnings |
 | `2` | Manual Driving | driver on track | speed, SoC, power/regen/TV/DRS, drive state, pedals, steering. Nothing else unless something goes wrong |
 | `3` | Driverless | preparing/after an autonomous run | AS state, mission, ASMS, EBS, air tank and brake line pressure, readiness checklist |
 

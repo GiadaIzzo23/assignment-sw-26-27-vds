@@ -48,7 +48,7 @@ renderer.
 ### Hysteresis
 
 A value jittering around a threshold would make an alert flicker on and off,
-which is worse than no alert. de-escalationrequires the value to recover by 
+which is worse than no alert. De-escalation requires the value to recover by 
 a margin (`hysteresis`), kept per signal.
 
 ## Configuration
@@ -56,6 +56,9 @@ a margin (`hysteresis`), kept per signal.
 All thresholds and simulation constants live in `Config` with built-in defaults,
 overridable from `config/vds.cfg` without recompiling. Invalid or missing entries
 fall back to the defaults and are reported on stderr instead of crashing.
+
+The pages contain no thresholds or scales: they ask the warning engine or read
+`Config`. Pixel layout and colours are the only numbers left in the renderer.
 
 ## Simulation scenarios
 
@@ -74,7 +77,8 @@ a thin layer over already-tested logic.
 
 ## Known limitations / next steps
 
-- Visual polish is minimal; layout is fixed on a 1280x720 logical canvas.
-- Page scales (steering bar range, pressure bar range) are still constants in
-  `Pages.cpp` and should move to `Config`.
+- The layout is fixed on a 1280x720 logical canvas scaled to the window; a real
+  display would need its own layout pass.
+- Pixel positions and colours are constants in `Pages.cpp`: they are presentation,
+  not behaviour. The bar scales (steering, pressure) come from `Config`.
 - No log replay source yet, though `IVehicleSource` allows one.

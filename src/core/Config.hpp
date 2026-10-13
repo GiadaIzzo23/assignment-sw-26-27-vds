@@ -1,6 +1,7 @@
 // Central place for every tunable number of the simulator.
-// Nothing in the renderer or in the simulation logic contains a "magic number":
-// it all comes from here.
+// No threshold or simulation constant is hard-coded in the renderer or in the
+// simulation logic: it all comes from here. Pixel layout and colours are
+// presentation and stay in the pages.
 //
 // The defaults below can be overridden at run time with a plain-text file
 // (see config/vds.cfg and Config::loadFromFile), so thresholds can be tuned
@@ -85,7 +86,7 @@ struct Config {
         double pack_heat_c_per_s = 0.4;
         double pack_cool_per_s = 0.02;
         // injected scenarios
-        double fault_inv_heat_c_per_s = 8.0;   // extra heat on inverter FL
+        double fault_inv_heat_c_per_s = 6.0;   // extra heat on inverter FL
         double fault_soc_drop_pct_per_s = 5.0;
         double fault_soc_floor_pct = 5.0;
         double tank_leak_bar_per_s = 0.25;
