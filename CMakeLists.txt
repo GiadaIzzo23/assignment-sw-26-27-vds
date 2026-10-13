@@ -13,7 +13,8 @@ option(VDS_BUILD_TESTS "Build the unit tests (no graphics needed)" ON)
 # vds_core: vehicle model and logic. It must never link SDL.
 add_library(vds_core STATIC
   src/core/Config.cpp
-  src/core/VehicleState.cpp)
+  src/core/VehicleState.cpp
+  src/core/Warnings.cpp)
 target_include_directories(vds_core PUBLIC src)
 target_compile_options(vds_core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -23,7 +24,8 @@ if(VDS_BUILD_TESTS)
     tests/test_main.cpp
     tests/test_state.cpp
     tests/test_interface.cpp
-    tests/test_config.cpp)
+    tests/test_config.cpp
+    tests/test_warnings.cpp)
   target_include_directories(vds_tests PRIVATE tests)
   target_link_libraries(vds_tests PRIVATE vds_core)
   target_compile_options(vds_tests PRIVATE -Wall -Wextra -Wpedantic)
