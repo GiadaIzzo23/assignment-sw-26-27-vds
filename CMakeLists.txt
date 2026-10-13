@@ -27,7 +27,8 @@ if(VDS_BUILD_TESTS)
     tests/test_interface.cpp
     tests/test_config.cpp
     tests/test_warnings.cpp
-    tests/test_policy.cpp)
+    tests/test_policy.cpp
+    tests/test_simulation.cpp)
   target_include_directories(vds_tests PRIVATE tests)
   target_link_libraries(vds_tests PRIVATE vds_core)
   target_compile_options(vds_tests PRIVATE -Wall -Wextra -Wpedantic)

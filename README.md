@@ -1,30 +1,109 @@
-# Task 3 — Vehicle Dashboard Simulator
-## 1. Introduction
-The **Vehicle Dashboard Simulator (VDS)** is a desktop application that simulates the graphical dashboard of the Formula Student vehicle.
-The objective of this assignment is to explore the design and implementation of the team's future graphical dashboard before integrating it into the actual vehicle.
+# Vehicle Dashboard Simulator (VDS)
 
-The application must be written in **C or C++**, using a graphics library of your choice.
-The simulator should reproduce realistic vehicle information and allow the user to interactively change vehicle states, settings and operating conditions.
+Desktop simulator of the Formula Student dashboard (Race UP, Task 3), written in
+C++17 with SDL2. It has three dashboards with different information hierarchy,
+an interactive internal vehicle simulation, and warnings whose presentation
+depends on the active mode.
 
-The assignment is not only about graphical appearance.
-The dashboard must communicate the **right information, at the right time, with the right level of importance**.
+## Build
 
----
-## 2. Main Objective
+Tested on Ubuntu 24.04 (also under WSL2 with WSLg).
 
-**Operating Contexts and Information Hierarchy** 
-The dashboard must support three distinct operating modes, each tailored to a specific user and purpose. We are not seeking three identical pages that just rearrange the same numbers.
+```bash
+sudo apt install build-essential cmake pkg-config libsdl2-dev libsdl2-ttf-dev
+git clone <your-fork-url> && cd assignment-sw-26-27-vds
+cmake -S . -B build
+cmake --build build -j
+./build/vds                 # optional: ./build/vds path/to/other.cfg
+ctest --test-dir build --output-on-failure
+```
 
-- **Debugging Mode** is intended for workshop engineers when the car is stationary. It requires maximum information density, providing a complete overview of the vehicle state (accumulator voltage, individual motor/inverter data, detailed temperatures, ECU status, etc.).
-    
-- **Manual Driving Mode** is for the driver on the track. It demands strict visual clarity and must _not_ attempt to display every signal. It should only show essential driving data (speed, State of Charge, key settings) while hiding secondary parameters unless something goes wrong.
-    
-- **Driverless Mode** is for preparing autonomous runs. Since there is no driver, the focus must shift to mission selection, Autonomous System (AS) states, Emergency Brake System (EBS) status, air tank pressures, and overall system readiness.
+The tests need no graphics. To build only the logic and its tests (no SDL needed):
 
-**Internal Simulation and Interactivity** The application will not connect to a real vehicle. Instead, you must implement an **internal simulated vehicle state** that tracks dynamic variables such as speed, pedal positions, steering angle, State of Charge (SoC), temperatures, DRS, and active faults. The user must be able to interact with this simulation via keyboard controls to accelerate, brake, change vehicle settings (e.g., torque vectoring, power/regen levels), and switch between dashboard modes.
+```bash
+cmake -S . -B build -DVDS_BUILD_APP=OFF
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
 
-**Scenarios and Dynamic Warnings** The simulator must allow us to test the dashboard's reaction to various scenarios. Beyond normal driving, users must be able to intentionally trigger critical events, such as high inverter temperatures, critical SoC drops, or autonomous-system faults. When these events occur, the dashboard must react dynamically. A warning cannot simply be a colored number; its visual representation must reflect its severity and be clearly distinguishable from normal operation. Crucially, how a warning is displayed should depend on the active mode (e.g., a rising temperature might just be a number in Debugging mode, but a flashing alert in Manual Driving mode).
+The build copies `assets/` and `config/` next to the executable.
 
-**Software Architecture and Configuration** We require a strict architectural separation of concerns. The simulated vehicle state and input logic must be completely decoupled from the graphical rendering loop. The UI should simply consume and display the vehicle state, ensuring that the simulated backend can be easily swapped out for a real vehicle data stream in the future. Additionally, all simulation constants and warning thresholds (e.g., max speed, critical temperature limits) must be centralized in a maintainable way (configuration files or constants), rather than hardcoded into the rendering logic.
+## Dashboard modes
 
-**Deliverables, Testing, and Reproducibility** The final delivery must be a highly reproducible repository. Any team engineer should be able to clone the repo, install dependencies, and build the application smoothly. We require a comprehensive README documenting the build process, keyboard controls, and architectural choices. Finally, while we do not expect automated graphical UI testing, you must provide **automated tests** for the underlying logic—specifically vehicle-state transitions, threshold evaluations, and warning detection—proving that the core simulation logic functions independently of the graphics.
+| Key | Mode | Audience | Content |
+|-----|------|----------|---------|
+| `1` | Debugging | workshop engineers, car stationary | maximum density: vehicle, settings, accumulator, all ECUs, per-inverter data, autonomous system, injected faults |
+| `2` | Manual Driving | driver on track | speed, SoC, power/regen/TV/DRS, drive state, pedals, steering. Nothing else unless something goes wrong |
+| `3` | Driverless | preparing/after an autonomous run | AS state, mission, ASMS, EBS, air tank and brake line pressure, readiness checklist |
+
+### How warnings are presented per mode
+
+Detection is the same everywhere (`core/Warnings`); presentation is decided by
+`ui/WarningPolicy.hpp`.
+
+| Severity | Debugging | Manual | Driverless |
+|----------|-----------|--------|------------|
+| Caution | number tinted | small chip (thermal/SoC); secondary systems hidden | thermal/SoC hidden; AS/EBS/tank/ECU tinted |
+| Warning | chip in the alert strip | banner; secondary systems hidden | AS/EBS/tank/ECU banner; thermal/SoC chip |
+| Critical | chip in the alert strip | flashing banner + flashing screen frame (secondary systems: static banner) | AS/EBS/tank/ECU flashing banner; thermal/SoC banner |
+
+## Keyboard controls
+
+| Key | Action |
+|-----|--------|
+| `W` / Up | accelerate (hold) |
+| `S` / Down | brake (hold) |
+| `A` `D` / Left Right | steer (hold) |
+| `1` `2` `3` | Debugging / Manual / Driverless |
+| `T` | tractive system on/off (precharge ~2 s) |
+| `Enter` | ready to drive (hold brake) |
+| `Z` / `X` | power level down / up |
+| `C` / `V` | regen level down / up |
+| `B` | cycle torque vectoring |
+| `Space` | DRS request (needs speed and little steering) |
+| `M` | ASMS on/off |
+| `Q` / `E` | previous / next mission |
+| `G` | GO (countdown) |
+| `K` | mission complete |
+| `Backspace` | emergency stop |
+| `F1`..`F7` | toggle fault: inverter over-temp, critical SoC, AS fault, EBS fault, tank leak, BMS fault, SMU lost |
+| `F8` | clear all faults |
+| `F9` | reset the simulation |
+| `Esc` | quit |
+
+Quick start: press `T`, wait for READY, hold `S` and press `Enter`, release `S`, hold `W`.
+
+## Architecture
+
+```text
+keyboard -> Input -> Command / DriverInput -> IVehicleSource -> VehicleState -> Pages
+                                                    ^                |
+                                               Simulation     WarningEngine -> WarningPolicy
+```
+
+- `src/core` (library `vds_core`, never links SDL):
+  - `VehicleState`: plain data, the only thing the UI reads.
+  - `IVehicleSource`: the seam. `Simulation` implements it today; a CAN/telemetry
+    reader can implement the same interface without touching the UI.
+  - `Simulation`: deterministic, fixed integration step, driven only by `update(dt)`.
+  - `Warnings`: pure threshold evaluation (rising/falling signals) with hysteresis,
+    so that jittering values do not flicker the alerts.
+  - `Config`: every constant and threshold, with built-in defaults.
+- `src/ui` (SDL2): `Gfx` (thin SDL wrapper), `Input` (the only place that knows
+  scancodes), `Pages` (the three dashboards), `WarningPolicy` (per-mode presentation,
+  SDL-free and unit-tested).
+- `src/app/main.cpp`: wires the pieces together and nothing else.
+
+Design choices are in `docs/ThoughtProcess.md`.
+
+## Configuration
+
+All simulation constants and warning thresholds live in `config/vds.cfg`
+(`section.key = number`, `#` for comments). Edit and restart, no recompilation.
+Missing or invalid entries fall back to the built-in defaults and are reported on stderr.
+
+## Tests
+
+`ctest` runs `vds_tests`: vehicle state, the vehicle-source interface, configuration
+parsing, warning detection and hysteresis, the per-mode presentation policy and the
+simulation (state transitions, scenarios, determinism). None of them needs a display.
