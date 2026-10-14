@@ -1,7 +1,5 @@
 # Vehicle Dashboard Simulator (VDS)
 
-![CI](https://github.com/GiadaIzzo23/assignment-sw-26-27-vds/actions/workflows/ci.yml/badge.svg)
-
 Desktop simulator of the Formula Student dashboard (Race UP, Task 3), written in
 C++17 with SDL2. It has three dashboards with different information hierarchy,
 an interactive internal vehicle simulation, and warnings whose presentation
