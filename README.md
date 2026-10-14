@@ -38,6 +38,11 @@ The build copies `assets/` and `config/` next to the executable.
 | `2` | Manual Driving | driver on track | speed, SoC, power/regen/TV/DRS, drive state, pedals, steering. Nothing else unless something goes wrong |
 | `3` | Driverless | preparing/after an autonomous run | AS state, mission, ASMS, EBS, air tank and brake line pressure, readiness checklist |
 
+The Driverless checklist has three states: a green `OK` (done), an orange `--` (a step the
+operator still has to do) and a red `X` (blocked by a fault: an ECU, the EBS, the BMS or a
+low air tank). A fault is reported before a missing step, so "blocked by" always names the
+most urgent problem first.
+
 ## Screenshots
 
 | Debugging | Manual Driving |
@@ -102,6 +107,8 @@ keyboard -> Input -> Command / DriverInput -> IVehicleSource -> VehicleState -> 
   - `Simulation`: deterministic, fixed integration step, driven only by `update(dt)`.
   - `Warnings`: pure threshold evaluation (rising/falling signals) with hysteresis,
     so that jittering values do not flicker the alerts.
+  - `Readiness`: pure evaluation of the Driverless checklist (done / pending / blocked
+    by a fault); the page only chooses colours and symbols.
   - `Config`: every constant and threshold, with built-in defaults.
 - `src/ui` (SDL2): `Gfx` (thin SDL wrapper), `Input` (the only place that knows
   scancodes), `Pages` (the three dashboards), `WarningPolicy` (per-mode presentation,
@@ -119,5 +126,6 @@ Missing or invalid entries fall back to the built-in defaults and are reported o
 ## Tests
 
 `ctest` runs `vds_tests`: vehicle state, the vehicle-source interface, configuration
-parsing, warning detection and hysteresis, the per-mode presentation policy and the
-simulation (state transitions, scenarios, determinism). None of them needs a display.
+parsing, warning detection and hysteresis, the Driverless readiness checklist, the
+per-mode presentation policy and the simulation (state transitions, scenarios,
+determinism). None of them needs a display.

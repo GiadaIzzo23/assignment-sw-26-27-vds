@@ -60,6 +60,16 @@ fall back to the defaults and are reported on stderr instead of crashing.
 The pages contain no thresholds or scales: they ask the warning engine or read
 `Config`. Pixel layout and colours are the only numbers left in the renderer.
 
+## Readiness: three states, not two
+
+The Driverless checklist started as a yes/no per item, drawn in orange when "no". That
+mixed up two different situations: a step the operator can simply do (switch the ASMS on,
+choose a mission) and a prerequisite that cannot be met while something is broken (an ECU or
+the EBS in fault, low tank pressure). `core/Readiness` now returns `Done`, `Pending` or
+`Blocked` for each item; the page draws them green, orange and red, and the main "blocked
+by" reason is the first blocked item, because clearing a fault comes before anything else.
+It is pure logic, so it is unit tested without a display.
+
 ## Simulation scenarios
 
 Faults are injected as a bit mask (`F1`..`F7`), so scenarios can be combined and
@@ -71,8 +81,8 @@ a real car would exercise.
 ## Testing
 
 Automated tests cover state transitions, threshold evaluation, hysteresis,
-warning detection, the per-mode presentation policy, configuration parsing and
-determinism of the simulation. Graphics are not tested automatically; they are
+warning detection, the readiness checklist, the per-mode presentation policy,
+configuration parsing and determinism of the simulation. Graphics are not tested automatically; they are
 a thin layer over already-tested logic.
 
 ## Known limitations / next steps
