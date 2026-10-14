@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "ui/WarningPolicy.hpp"
+#include "core/Readiness.hpp"
 
 namespace vds {
 namespace {
@@ -363,48 +364,43 @@ void drawDriverless(Gfx& g, const VehicleState& s, const WarningEngine& w, const
     g.text(680, 350, fmt("BRAKE LINE  %.2f bar", s.brake_line_pressure_bar), 30, kText);
     bar(g, 680, 388, 560, 30, s.brake_line_pressure_bar / cfg.display.bar_full_bar, kHead);
 
-    // Readiness checklist.
-    bool ecus_ok = true;
-    for (int i = 0; i < kEcuCount; ++i) ecus_ok = ecus_ok && s.ecu[i] == EcuStatus::Ok;
-    struct Check {
-        const char* name;
-        const char* blocker;
-        bool ok;
-    };
-    const std::array<Check, 6> checks = {{
-        {"ASMS on", "ASMS off", s.asms_on},
-        {"Mission selected", "no mission", s.mission != Mission::None},
-        {"TS ready", "TS not ready", s.ts == TsState::Ready || s.ts == TsState::Drive},
-        {"EBS armed", "EBS not armed", s.ebs == EbsState::Armed},
-        {"All ECUs OK", "ECU fault", ecus_ok},
-        {"Tank pressure OK", "low tank pressure",
-         w.severityOf(WarnId::LowTankPressure) < Severity::Warning},
-    }};
-    bool all_ok = true;
-    int blocked = 0;
-    const Check* first_block = nullptr;
+    // Readiness checklist. What is ready, still to do, or blocked by a fault is
+    // decided in core/Readiness; this code only chooses colours and symbols.
+    const Readiness ready = evaluateReadiness(s, w.severityOf(WarnId::LowTankPressure));
     int y = 440;
-    for (const Check& c : checks) {
-        g.fillRect(680, y - 2, 64, 30, c.ok ? kGreen : colorFor(Severity::Warning));
-        centered(g, 712, y, c.ok ? "OK" : "--", 24, kBlack);
-        g.text(762, y, c.name, 24, c.ok ? kText : kDim);
-        if (!c.ok) {
-            all_ok = false;
-            ++blocked;
-            if (!first_block) first_block = &c;
+    for (const ReadinessItem& item : ready.items) {
+        Color box = kGreen;
+        Color label = kText;
+        const char* mark = "OK";
+        if (item.state == CheckState::Pending) {
+            box = colorFor(Severity::Warning);
+            label = kDim;
+            mark = "--";
+        } else if (item.state == CheckState::Blocked) {
+            box = colorFor(Severity::Critical);
+            label = colorFor(Severity::Critical);
+            mark = "X";
         }
+        g.fillRect(680, y - 2, 64, 30, box);
+        centered(g, 712, y, mark, 24, kBlack);
+        g.text(762, y, item.name, 24, label);
         y += 32;
     }
 
-    g.fillRect(40, 560, 580, 100, all_ok ? Color{20, 90, 45} : Color{70, 40, 15});
-    if (all_ok) {
+    const bool blocked = ready.hasBlocked();
+    Color summary_bg = Color{20, 90, 45};
+    if (!ready.ready()) summary_bg = blocked ? Color{90, 20, 25} : Color{70, 40, 15};
+    g.fillRect(40, 560, 580, 100, summary_bg);
+    if (ready.ready()) {
         centered(g, 330, 572, "SYSTEM READY", 48, kGreen);
         if (s.as == AsState::Ready && !s.go_pending)
             centered(g, 330, 628, "press G to start the run", 24, kText);
     } else {
-        centered(g, 330, 572, "NOT READY", 48, colorFor(Severity::Warning));
-        std::string why = std::string("blocked by: ") + first_block->blocker;
-        if (blocked > 1) why += " +" + std::to_string(blocked - 1) + " more";
+        centered(g, 330, 572, "NOT READY", 48,
+                 colorFor(blocked ? Severity::Critical : Severity::Warning));
+        std::string why = std::string("blocked by: ") + ready.firstBlocker()->blocker;
+        const int others = ready.notDone() - 1;
+        if (others > 0) why += " +" + std::to_string(others) + " more";
         centered(g, 330, 628, why, 24, kText);
     }
 
